@@ -43,3 +43,23 @@ variable "private_ip_address" {
   type        = string
   default     = null
 }
+
+variable "app_private_ip_address" {
+  type    = string
+  default = "10.10.2.4"
+}
+
+variable "db_private_ip_address" {
+  type    = string
+  default = "10.10.2.5"
+}
+
+variable "dmz_ip_address" {
+  type    = string
+  default = "10.10.1.4"
+}
+
+variable "bastion_ip_address" {
+  type    = string
+  default = "10.10.3.4"
+}

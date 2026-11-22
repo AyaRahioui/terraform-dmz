@@ -13,6 +13,7 @@ locals {
   all_ports = concat(
     var.dnat_tcp_ports, var.app_tcp_ports, var.monitoring_scrape_tcp_ports,
     var.monitoring_ingest_tcp_ports, var.egress_tcp_ports, var.egress_udp_ports,
+    var.monitoring_ui_tcp_ports, [var.admin_ssh_dnat_port],
   )
   all_cidrs = [
     var.vnet_cidr, var.firewall_subnet_cidr, var.dmz_subnet_cidr,
@@ -24,22 +25,26 @@ locals {
   nva_ip_for_rules = var.private_ip_address == null ? "" : var.private_ip_address
 
   nftables_conf = templatefile("${path.module}/scripts/nftables.conf", {
-    vnet_cidr          = var.vnet_cidr
-    dmz_cidr           = var.dmz_subnet_cidr
-    lan_cidr           = var.lan_subnet_cidr
-    mgmt_cidr          = var.mgmt_subnet_cidr
-    monitoring_cidr    = var.monitoring_subnet_cidr
-    web_ip             = var.web_private_ip
-    app_ip             = var.app_private_ip
-    monitoring_ip      = var.monitoring_private_ip
-    dnat_tcp_ports     = join(", ", var.dnat_tcp_ports)
-    app_tcp_ports      = join(", ", var.app_tcp_ports)
-    scrape_tcp_ports   = join(", ", var.monitoring_scrape_tcp_ports)
-    ingest_tcp_ports   = join(", ", var.monitoring_ingest_tcp_ports)
-    egress_tcp_ports   = join(", ", var.egress_tcp_ports)
-    egress_udp_ports   = join(", ", var.egress_udp_ports)
-    untrust_interface  = "eth0"
-    nva_ip_placeholder = "__NVA_IP__"
+    vnet_cidr           = var.vnet_cidr
+    dmz_cidr            = var.dmz_subnet_cidr
+    lan_cidr            = var.lan_subnet_cidr
+    mgmt_cidr           = var.mgmt_subnet_cidr
+    monitoring_cidr     = var.monitoring_subnet_cidr
+    web_ip              = var.web_private_ip
+    app_ip              = var.app_private_ip
+    monitoring_ip       = var.monitoring_private_ip
+    dnat_tcp_ports      = join(", ", var.dnat_tcp_ports)
+    app_tcp_ports       = join(", ", var.app_tcp_ports)
+    scrape_tcp_ports    = join(", ", var.monitoring_scrape_tcp_ports)
+    ingest_tcp_ports    = join(", ", var.monitoring_ingest_tcp_ports)
+    egress_tcp_ports    = join(", ", var.egress_tcp_ports)
+    egress_udp_ports    = join(", ", var.egress_udp_ports)
+    ui_tcp_ports        = join(", ", var.monitoring_ui_tcp_ports)
+    bastion_ip          = var.bastion_private_ip
+    admin_source_ips    = join(", ", var.admin_source_ips)
+    admin_ssh_dnat_port = var.admin_ssh_dnat_port
+    untrust_interface   = "eth0"
+    nva_ip_placeholder  = "__NVA_IP__"
   })
 
   # replace() : protège contre les fins de ligne CRLF (checkout Windows avec autocrlf=true),
@@ -146,6 +151,7 @@ resource "azurerm_linux_virtual_machine" "nva" {
         length(var.dnat_tcp_ports) > 0, length(var.app_tcp_ports) > 0,
         length(var.monitoring_scrape_tcp_ports) > 0, length(var.monitoring_ingest_tcp_ports) > 0,
         length(var.egress_tcp_ports) > 0, length(var.egress_udp_ports) > 0,
+        length(var.monitoring_ui_tcp_ports) > 0,
       ])
       error_message = "Les listes de ports ne peuvent pas être vides (syntaxe nftables)."
     }

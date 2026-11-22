@@ -159,9 +159,37 @@ variable "monitoring_scrape_tcp_ports" {
 }
 
 variable "monitoring_ingest_tcp_ports" {
-  description = "Ports de vm-monitor joignables par toutes les VMs (ex: Loki)."
+  description = "Ports de vm-monitor joignables par toutes les VMs (F08 : 1514/1515 agent, 3100 Loki)."
   type        = list(number)
-  default     = [3100]
+  default     = [1514, 1515, 3100]
+}
+
+variable "monitoring_ui_tcp_ports" {
+  description = "Ports de l'interface de vm-monitor joignables depuis le bastion (F14 : Grafana)."
+  type        = list(number)
+  default     = [3000]
+}
+
+variable "bastion_private_ip" {
+  type    = string
+  default = "10.10.3.4"
+}
+
+variable "admin_source_ips" {
+  description = "F06 : IP publiques d'admin (/32) autorisées en SSH via NVA:admin_ssh_dnat_port -> bastion:22. Vide = flux désactivé."
+  type        = list(string)
+  default     = []
+
+  validation {
+    condition     = alltrue([for ip in var.admin_source_ips : can(cidrhost(ip, 0)) && endswith(ip, "/32")])
+    error_message = "admin_source_ips : uniquement des CIDR /32 valides (ex: 203.0.113.10/32)."
+  }
+}
+
+variable "admin_ssh_dnat_port" {
+  description = "F06 : port public de la NVA redirigé vers le SSH du bastion."
+  type        = number
+  default     = 2222
 }
 
 variable "egress_tcp_ports" {

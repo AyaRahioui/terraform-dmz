@@ -107,6 +107,48 @@ run "nftables_anti_lockout_and_policy" {
   }
 }
 
+run "f06_disabled_by_default_f14_present" {
+  command = plan
+
+  assert {
+    condition     = !strcontains(output.nftables_ruleset, "F06")
+    error_message = "Sans admin_source_ips, aucun DNAT SSH ne doit être ouvert depuis Internet."
+  }
+
+  assert {
+    condition     = strcontains(output.nftables_ruleset, "ip saddr $BASTION_IP ip daddr $MON_IP tcp dport $UI_TCP accept")
+    error_message = "F14 : le bastion doit pouvoir joindre Grafana."
+  }
+}
+
+run "f06_admin_dnat_to_bastion" {
+  command = plan
+
+  variables {
+    admin_source_ips = ["203.0.113.10/32"]
+  }
+
+  assert {
+    condition     = strcontains(output.nftables_ruleset, "define ADMIN_IPS  = { 203.0.113.10/32 }")
+    error_message = "Les IP d'admin doivent être injectées dans le ruleset."
+  }
+
+  assert {
+    condition     = strcontains(output.nftables_ruleset, "tcp dport 2222 dnat to $BASTION_IP:22")
+    error_message = "F06 : NVA:2222 doit être redirigé vers bastion:22."
+  }
+}
+
+run "rejects_admin_ip_not_32" {
+  command = plan
+
+  variables {
+    admin_source_ips = ["0.0.0.0/0"]
+  }
+
+  expect_failures = [var.admin_source_ips]
+}
+
 run "custom_data_is_safe" {
   command = plan
 

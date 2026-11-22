@@ -36,7 +36,9 @@ génère `/etc/nftables.conf` à partir de `scripts/nftables.conf` et installe l
 | vm-web `10.10.1.4` | vm-app `10.10.2.4` | tcp 8080 | `app_tcp_ports` |
 | mgmt `10.10.3.0/24` | tout le VNet + la NVA | tcp 22, icmp | administration |
 | vm-monitor `10.10.4.4` | tout le VNet + la NVA | tcp 9100 | `monitoring_scrape_tcp_ports` |
-| tout le VNet | vm-monitor | tcp 3100 | `monitoring_ingest_tcp_ports` (Loki) |
+| tout le VNet | vm-monitor | tcp 1514, 1515, 3100 | F08, `monitoring_ingest_tcp_ports` |
+| bastion `10.10.3.4` | vm-monitor | tcp 3000 | F14 Grafana, `monitoring_ui_tcp_ports` |
+| IP admin /32 (`admin_source_ips`) | NVA:2222 → **DNAT** bastion:22 | tcp | F06, **désactivé si la liste est vide** |
 | tout le VNet | Internet (SNAT) | tcp 80/443, udp 53/123 | mises à jour |
 | DMZ | LAN / mgmt / monitoring (autre que ci-dessus) | — | **drop + log** `nft-dmz-pivot:` |
 
@@ -51,6 +53,10 @@ Logs des refus : `journalctl -k | grep nft-`.
 ## Ce dont les autres membres ont besoin
 - **M3 (routing)** : UDR `0.0.0.0/0` + routes inter-subnets → next hop `VirtualAppliance` = `module.firewall.nva_private_ip`.
   Le NSG du subnet firewall doit autoriser **tcp 80/443 depuis Internet** (l'IP publique Standard est fermée par défaut) et le trafic du VNet.
+- **M1 (intégration)** : le subnet mgmt part en `0.0.0.0/0` via la NVA (UDR de M3), donc un SSH direct sur l'IP
+  publique du bastion aura un retour asymétrique et sera bloqué. Accès admin prévu : passer les mêmes
+  `admin_source_ips` à `module.firewall` et `module.routing`, puis `ssh -p 2222 <nva_public_ip>`.
+- **M3** : le NSG firewall n'autorise pas monitoring → NVA `10.10.0.4:9100` (scrape de la NVA elle-même).
 - **M4 (dmz)** : le site est publié via `nva_public_ip` (ports 80/443).
 - **M5 (lan)** : l'app doit écouter sur `app_tcp_ports` (8080 par défaut), sinon ajuster la variable.
 - **M6 (monitoring)** : node_exporter 9100 et Loki 3100 par défaut ; output `nftables_ruleset` disponible pour des tests.
